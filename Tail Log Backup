@@ -1,0 +1,38 @@
+create database mydb;
+alter database mydb set recovery full
+use mydb
+
+create table records (Details varchar(18))
+insert into records values('Full')
+GO 2
+
+select * from records
+backup database mydb to disk = 'D:\BackupSqlServer\full.bak'
+
+insert into records values ('LOG1')
+GO 2
+backup log mydb to disk = 'D:\BackupSqlServer\log1.trn'
+
+insert into records values ('LOG2')
+GO 2
+backup log mydb to disk = 'D:\BackupSqlServer\log2.trn'
+
+insert into records values ('Tail1')
+Go 2
+
+---continue_after_error This will force SQL Server to initiate the log backup.
+
+alter database mydb set offline
+alter database mydb set online
+
+
+backup log mydb to disk = 'D:\BackupSqlServer\tail1.trn'
+with continue_after_error
+
+with no_truncate, norecovery
+
+restore database mydb from disk = 'D:\BackupSqlServer\full.bak' with norecovery
+restore log mydb from disk = 'D:\BackupSqlServer\log1.trn' with norecovery 
+restore log mydb from disk = 'D:\BackupSqlServer\log2.trn' with norecovery
+
+restore log mydb from disk = 'D:\BackupSqlServer\tail1.trn'
