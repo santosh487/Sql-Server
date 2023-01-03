@@ -1,0 +1,83 @@
+
+drop table AuditTable
+CREATE TABLE AuditTable
+(Aud_Id int identity(1,1) primary key,
+Aud_TableName varchar(100), 
+Aud_ActionType char(1),
+Aud_Username varchar(100),
+Aud_OLDValues NVarChar(max) , 
+Aud_NEWValues NVarChar(max) ,
+Aud_OperationDate datetime DEFAULT GETDATE()
+);
+ 
+
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ 
+CREATE OR ALTER Procedure [dbo].[Pr_Audit_All_Tables]
+@tname varchar(100)
+as
+Begin
+    Declare @sqlCreate varchar(max)
+    declare @sqlDrop varchar(max)
+    set @sqlDrop='DROP TRIGGER IF EXISTS Audit_' +@tname 
+    Exec (@sqlDrop)
+ 
+    set @sqlCreate='
+    CREATE TRIGGER Audit_' +@tname+ ' on [dbo].'+@tname+'
+    FOR UPDATE,DELETE
+    AS
+    BEGIN
+    SET NOCOUNT ON;
+     IF NOT EXISTS(SELECT 1 FROM DELETED) AND NOT EXISTS(SELECT 1 FROM INSERTED) 
+        RETURN;
+ 
+    --declare @tablename varchar(100)
+    --SELECT @tablename = OBJECT_NAME(parent_object_id) FROM sys.objects WHERE sys.objects.name = OBJECT_NAME(@@PROCID)
+ 
+    /*Action*/
+    DECLARE @ActionType char(1)
+    IF EXISTS (SELECT * FROM INSERTED)
+           IF EXISTS (SELECT * FROM DELETED)
+                   SELECT @ActionType = ''U''
+           ELSE
+                   SELECT @ActionType = ''I''
+    ELSE
+           SELECT @ActionType = ''D''
+ 
+    declare @inserted NVarChar(max), @deleted NVarChar(max) 
+    SET @inserted = (SELECT * FROM inserted FOR json PATH)
+    SET @deleted = (SELECT * FROM deleted FOR json PATH)
+ 
+                 INSERT INTO AuditTable(Aud_TableName, Aud_ActionType, Aud_Username, Aud_OLDValues, Aud_NEWValues)
+                 SELECT ''' + @tname +''', @ActionType, SUSER_SNAME(), @deleted, @inserted
+    END'
+    Exec(@sqlCreate)
+End;
+ 
+=============================================
+ 
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE or alter Procedure [dbo].[PR_Call_Audit_All_Tables]
+as
+    DECLARE @tablename varchar(100)
+    DECLARE tname CURSOR
+    FOR
+        SELECT name 'tname' frOM SYSOBJECTS WHERE xtype = 'U' and name not in('AuditTable' ,'__MigrationHistory','AllRenewStage')
+        order by name
+    OPEN tname;
+    FETCH NEXT FROM tname INTO @tablename
+    WHILE @@FETCH_STATUS = 0
+        BEGIN
+            EXEC [dbo].Pr_Audit_All_Tables @tablename
+            FETCH NEXT FROM tname INTO @tablename
+        END;
+    CLOSE tname  
+    DEALLOCATE tname
+
