@@ -1,0 +1,32 @@
+create table t1 (id int, name varchar(20),username varchar(20),password varchar(20))
+
+create table login (id int, username varchar(20), password  varchar(20))
+
+
+insert into t1 values (1,'santosh', 'santosh123','1234')
+insert into t1 values (2,'sapana', 'sapanna3','1236')
+insert into t1 values (3,'umesh', 'umesh23','294')
+insert into t1 values (4,'tap', 'tap0045','194')
+insert into t1 values (5,'bibek', 'bibek23','124')
+insert into t1 values (5,'sunil', 'sunil3',null)
+
+truncate table login
+insert into login values (101,'santosh123',null)
+insert into login values (102,'sapanna3',null)
+insert into login values (103,'umesh23',null)
+insert into login values (104,'tap0045',null)
+insert into login values (105,'bibek23',null)
+insert into login values (106,'sunil3',null)
+
+
+select * from t1
+
+select * from login
+
+update login
+set password = case when t1.password is not null then t1.password else 'abced' end
+--select  COALESCE(t1.password,'abced')
+from t1
+left join login l  on 
+l.username= t1.username
+where l.username = t1.username
